@@ -352,7 +352,7 @@ async function submitReading() {
     var data = await response.json();
     var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!content) content = '（模型未返回内容）';
-    resultBody.innerHTML = content + '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:24px;">公众号：解忧徐会长 公益制作</p>';
+    resultBody.innerHTML = content + '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:24px;">公众号：解忧徐会长 公益设计</p>';
   } catch (err) {
     resultBody.innerHTML = '<p class="error-msg">解卦出错：' + err.message + '</p>'
       + '<p class="tooltip">请检查 API 设置（点击右上角齿轮图标），确认网络通畅、密钥有效。</p>';
