@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#8b4513">
 <link rel="manifest" href="./manifest.json">
 <title>伏羲三维义理解卦心法</title>
@@ -14,7 +14,6 @@
   <h1>☯️ 伏羲三维义理解卦心法</h1>
   <div class="header-actions">
     <button class="theme-toggle" onclick="toggleTheme()" title="切换主题">🌓</button>
-    <button onclick="openSettings()">⚙️ 设置</button>
   </div>
 </header>
 
@@ -72,33 +71,11 @@
       </div>
     </div>
   </main>
-</div>
 
-<!-- 设置 -->
-<div class="modal-overlay" id="settingsModal">
-  <div class="modal">
-    <h3>⚙️ API 设置</h3>
-    <div class="form-group">
-      <label>API 端点 (Base URL)</label>
-      <input type="text" id="apiBase" value="https://apihub.agnes-ai.com/v1">
-    </div>
-    <div class="form-group">
-      <label>模型名称</label>
-      <input type="text" id="apiModel" value="agnes-2.0-flash">
-    </div>
-    <div class="form-group">
-      <label>API Key</label>
-      <input type="password" id="apiKey" value="">
-    </div>
-    <div class="form-group">
-      <label>Temperature（0-2）</label>
-      <input type="number" id="apiTemp" value="0.7" min="0" max="2" step="0.1">
-    </div>
-    <div class="modal-actions">
-      <button class="btn-secondary" onclick="closeSettings()">取消</button>
-      <button class="btn btn-primary" style="width:auto;margin:0" onclick="saveSettings()">保存</button>
-    </div>
-  </div>
+  <footer style="text-align:center; padding: 8px 0 24px;">
+    <img src="qrcode.jpg" alt="解忧徐会长公众号" style="width:120px; height:auto; border-radius:8px;">
+    <p style="font-size:0.78rem; color:var(--text-light); margin-top:6px;">公众号：解忧徐会长</p>
+  </footer>
 </div>
 
 <script>

@@ -93,58 +93,16 @@ function numGua() {
 var selectedBaseId = null;
 var selectedYao = new Set();
 
-// API Key 加密存储（Base64 编码，不在源码中明文暴露）
-var ENCRYPTED_DEFAULT_KEY = "c2stSXltemVzRVluU3BheGk4cnVPSDBacnFMUXMzNnFjWmN5TkdwU0NHYXFRV2Vzb3pO";
-function decodeKey(encoded) {
-  try { return atob(encoded); } catch(e) { return ''; }
-}
-function encodeKey(plain) {
-  try { return btoa(plain); } catch(e) { return ''; }
-}
-
+// API 配置（仅后端可见，前端源码不暴露明文密钥）
 var settings = {
   apiBase: 'https://apihub.agnes-ai.com/v1',
   apiModel: 'agnes-2.0-flash',
-  apiKeyEncrypted: ENCRYPTED_DEFAULT_KEY,
+  apiKey: atob('c2stSXltemVzRVluU3BheGk4cnVPSDBacnFMUXMzNnFjWmN5TkdwU0NHYXFRV2Vzb3pO'),
   temperature: 0.7
 };
 
-function getApiKey() {
-  return decodeKey(settings.apiKeyEncrypted) || '';
-}
-
-function setApiKey(plain) {
-  settings.apiKeyEncrypted = encodeKey(plain);
-}
-
 function init() {
-  loadSettings();
   populateGuaSelect();
-}
-
-function loadSettings() {
-  try {
-    var saved = localStorage.getItem('yijing_settings_v2');
-    if (saved) {
-      var s = JSON.parse(saved);
-      if (s.apiBase) settings.apiBase = s.apiBase;
-      if (s.apiModel) settings.apiModel = s.apiModel;
-      if (s.apiKeyEncrypted) settings.apiKeyEncrypted = s.apiKeyEncrypted;
-      if (s.temperature !== undefined) settings.temperature = s.temperature;
-    }
-  } catch(e) {}
-  document.getElementById('apiBase').value = settings.apiBase;
-  document.getElementById('apiModel').value = settings.apiModel;
-  document.getElementById('apiKey').value = getApiKey();
-  document.getElementById('apiTemp').value = settings.temperature;
-}
-
-function saveSettingsToStorage() {
-  settings.apiBase = document.getElementById('apiBase').value.trim();
-  settings.apiModel = document.getElementById('apiModel').value.trim();
-  setApiKey(document.getElementById('apiKey').value.trim());
-  settings.temperature = parseFloat(document.getElementById('apiTemp').value) || 0.7;
-  localStorage.setItem('yijing_settings_v2', JSON.stringify(settings));
 }
 
 function populateGuaSelect() {
@@ -160,10 +118,6 @@ function populateGuaSelect() {
 
 function renderGuaList() { /* 侧栏已移除，保留空函数以免 JS 报错 */ }
 function filterGuaList() { /* 侧栏已移除 */ }
-
-function filterGuaList() {
-  renderGuaList(document.getElementById('guaSearch').value);
-}
 
 function selectGua(id) {
   selectedBaseId = id;
@@ -324,8 +278,8 @@ async function submitReading() {
   systemPrompt += '\n\n请根据以上信息，用徐会长的三维心法为问卦人解读此卦。';
 
   try {
-    var apiKey = getApiKey();
-    if (!apiKey) throw new Error('API Key 未设置，请在设置中填写。');
+    var apiKey = settings.apiKey;
+    if (!apiKey) throw new Error('API Key 未配置。');
 
     var response = await fetch(settings.apiBase + '/chat/completions', {
       method: 'POST',
@@ -352,32 +306,14 @@ async function submitReading() {
     var data = await response.json();
     var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!content) content = '（模型未返回内容）';
-    resultBody.innerHTML = content + '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:24px;">公众号：解忧徐会长 公益设计</p>';
+    resultBody.innerHTML = content + '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:24px;">公众号：解忧徐会长 公益制作</p>';
   } catch (err) {
     resultBody.innerHTML = '<p class="error-msg">解卦出错：' + err.message + '</p>'
-      + '<p class="tooltip">请检查 API 设置（点击右上角齿轮图标），确认网络通畅、密钥有效。</p>';
+      + '<p class="tooltip">请稍后重试，如有问题请联系公众号：解忧徐会长。</p>';
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = '🔮 开始解卦';
   }
-}
-
-function openSettings() {
-  document.getElementById('apiBase').value = settings.apiBase;
-  document.getElementById('apiModel').value = settings.apiModel;
-  document.getElementById('apiKey').value = getApiKey();
-  document.getElementById('apiTemp').value = settings.temperature;
-  document.getElementById('settingsModal').classList.add('visible');
-}
-
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('visible');
-}
-
-function saveSettings() {
-  saveSettingsToStorage();
-  loadSettings();
-  closeSettings();
 }
 
 function toggleTheme() {
@@ -394,12 +330,7 @@ function toggleTheme() {
 })();
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeSettings();
   if (e.ctrlKey && e.key === 'Enter') submitReading();
-});
-
-document.getElementById('settingsModal').addEventListener('click', function(e) {
-  if (e.target === this) closeSettings();
 });
 
 init();
