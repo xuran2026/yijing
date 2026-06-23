@@ -115,7 +115,7 @@ function incrementUsage() {
 function init() {
   populateGuaSelect();
   updateUsageHint();
-  loadVisitorCount();
+  hitVisitorCount();
 }
 
 function updateUsageHint() {
@@ -132,54 +132,31 @@ function updateUsageHint() {
   }
 }
 
-// ============ 访客计数器 ============
-function loadVisitorCount() {
-  var el = document.getElementById('visitorCount');
-  if (!el) return;
+// ============ 访客计数器（静默） ============
+function hitVisitorCount() {
+  var lastVisit = 0;
+  try { lastVisit = parseInt(localStorage.getItem('yijing_last_visit')) || 0; } catch(e) {}
+  var now = Date.now();
+  if ((now - lastVisit) <= 30 * 60 * 1000) return; // 30分钟内不重复计
 
   var namespace = 'yijing-xinfa-v1';
   var key = 'visitors';
   var apiBase = 'https://api.countapi.xyz';
 
-  // 去重：同一浏览器 30 分钟内不重复计数
-  var lastVisit = 0;
-  try { lastVisit = parseInt(localStorage.getItem('yijing_last_visit')) || 0; } catch(e) {}
-  var now = Date.now();
-  var isNewVisit = (now - lastVisit) > 30 * 60 * 1000;
-
-  function show(count, isNew) {
-    if (el) {
-      el.innerHTML = '👁️ 访客：<strong>' + count + '</strong>' + (isNew ? ' 人' : ' 人');
-    }
-  }
-
-  // 先获取当前计数
-  fetch(apiBase + '/get/' + namespace + '/' + key)
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var count = data.value || 0;
-      if (isNewVisit) {
-        // 新访问，递增
-        return fetch(apiBase + '/hit/' + namespace + '/' + key)
-          .then(function(r) { return r.json(); })
-          .then(function(hitData) {
-            localStorage.setItem('yijing_last_visit', now);
-            show(hitData.value || count + 1, true);
-          });
-      } else {
-        show(count);
-      }
+  fetch(apiBase + '/hit/' + namespace + '/' + key)
+    .then(function() {
+      localStorage.setItem('yijing_last_visit', now);
+      // 同时打今日计数
+      var today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      fetch(apiBase + '/hit/' + namespace + '-daily-' + today + '/' + key).catch(function(){});
     })
     .catch(function() {
-      // API 不可用，回退到本地计数
+      // 回退本地计数
       var local = 0;
-      try { local = parseInt(localStorage.getItem('yijing_visitor_count')) || 0; } catch(e) {}
-      if (isNewVisit) {
-        local++;
-        localStorage.setItem('yijing_visitor_count', local);
-        localStorage.setItem('yijing_last_visit', now);
-      }
-      if (el) el.innerHTML = '👁️ 本站访客：<strong>' + local + '</strong> 人';
+      try { local = parseInt(localStorage.getItem('yijing_visitor_local')) || 0; } catch(e) {}
+      local++;
+      localStorage.setItem('yijing_visitor_local', local);
+      localStorage.setItem('yijing_last_visit', now);
     });
 }
 
