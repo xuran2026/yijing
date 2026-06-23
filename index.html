@@ -21,19 +21,19 @@
   <main class="main" style="max-width:720px; margin:0 auto;">
     <!-- 数字起卦 -->
     <div class="card">
-      <div class="card-title">🎲 数字起卦（不知道卦名时用）</div>
-      <div class="tooltip" style="margin-bottom:10px;">随意想三组数字，分别填入下面三个框。</div>
+      <div class="card-title">✉  数字起卦（不知道卦名时用）</div>
+      <div class="tooltip" style="margin-bottom:10px;">随意获得三组数字（如联想、翻书、看车牌等），分别填入下面三个框。</div>
       <div class="num-row">
         <div class="form-group">
-          <label>上卦数</label>
+          <label>第一组</label>
           <input type="number" id="numUpper" min="0" max="10000">
         </div>
         <div class="form-group">
-          <label>下卦数</label>
+          <label>第二组</label>
           <input type="number" id="numLower" min="0" max="10000">
         </div>
         <div class="form-group">
-          <label>动爻数</label>
+          <label>第三组</label>
           <input type="number" id="numYao" min="0" max="10000">
         </div>
         <button class="btn-sm" onclick="numGua()" style="margin-bottom:14px;">🎯 起卦</button>
@@ -43,14 +43,15 @@
 
     <!-- 输入卡片 -->
     <div class="card" id="inputCard">
-      <div class="card-title">🔮 问事解卦</div>
+      <div class="card-title">ღ  问事解卦</div>
       <div class="form-group">
         <label>所问之事（越详细越好）</label>
         <textarea id="question" placeholder="请描述你想问的事情，越具体越好。例如：我最近在考虑换工作，想看看时机是否合适..."></textarea>
       </div>
       <button class="btn btn-primary" id="submitBtn" onclick="submitReading()">
-        🔮 开始解卦
+       ✍ 开始解卦
       </button>
+      <p id="usageHint" style="text-align:center;font-size:0.75rem;color:var(--text-light);margin-top:8px;"></p>
       <!-- JS 依赖的隐藏元素 -->
       <select id="baseGua" onchange="onBaseGuaChange()" style="display:none"><option value=""></option></select>
       <div class="yao-selector" id="yaoSelector" style="display:none">
@@ -74,7 +75,8 @@
 
   <footer style="text-align:center; padding: 8px 0 24px;">
     <img src="qrcode.jpg" alt="解忧徐会长公众号" style="width:120px; height:auto; border-radius:8px;">
-    <p style="font-size:0.78rem; color:var(--text-light); margin-top:6px;">公众号：解忧徐会长</p>
+    <p style="font-size:0.78rem; color:var(--text-light); margin-top:6px;">祝你平安、健康、清净、无忧</p>
+    <p style="font-size:0.78rem; color:var(--text-light); margin-top:6px;">深入学习，可关注公众号：解忧徐会长</p>
   </footer>
 </div>
 

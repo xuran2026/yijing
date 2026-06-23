@@ -92,6 +92,7 @@ function numGua() {
 // ============ 全局状态 ============
 var selectedBaseId = null;
 var selectedYao = new Set();
+var lastCopyData = null;
 
 // API 配置（仅后端可见，前端源码不暴露明文密钥）
 var settings = {
@@ -101,8 +102,33 @@ var settings = {
   temperature: 0.7
 };
 
+// ============ 免费解卦次数 ============
+function getUsage() {
+  try {
+    return parseInt(localStorage.getItem('yijing_usage_total')) || 0;
+  } catch(e) { return 0; }
+}
+function incrementUsage() {
+  localStorage.setItem('yijing_usage_total', getUsage() + 1);
+}
+
 function init() {
   populateGuaSelect();
+  updateUsageHint();
+}
+
+function updateUsageHint() {
+  var el = document.getElementById('usageHint');
+  if (!el) return;
+  var used = getUsage();
+  var left = 30 - used;
+  if (left <= 0) {
+    el.textContent = '免费解卦已满 30 次，请关注公众号解忧徐会长';
+  } else if (left <= 5) {
+    el.textContent = '剩余 ' + left + ' 次免费解卦';
+  } else {
+    el.textContent = '免费解卦共 30 次，已用 ' + used + ' 次';
+  }
 }
 
 function populateGuaSelect() {
@@ -192,6 +218,32 @@ function findGuaByLines(targetLines) {
   return null;
 }
 
+function formatResultText(text) {
+  // 保护代码块
+  var blocks = [];
+  text = text.replace(/```[\s\S]*?```/g, function(m) {
+    blocks.push(m);
+    return '%%BLOCK_' + (blocks.length - 1) + '%%';
+  });
+
+  // ** 加粗
+  text = text.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  // __ 下划线
+  text = text.replace(/__([^_\n]+)__/g, '<u>$1</u>');
+
+  // 恢复代码块
+  text = text.replace(/%%BLOCK_(\d+)%%/g, function(_, i) {
+    var b = blocks[parseInt(i)];
+    return '<pre style="background:var(--tag-bg);padding:10px 14px;border-radius:6px;overflow-x:auto;font-size:0.85rem;margin:0.8em 0;">' + b.replace(/```/g, '') + '</pre>';
+  });
+
+  // 双换行切成段落
+  var paragraphs = text.split('\n\n').filter(function(p) { return p.trim(); });
+  return paragraphs.map(function(p) {
+    return '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+  }).join('');
+}
+
 function highlightYaoVisual() {
   var buttons = document.querySelectorAll('.yao-btn');
   buttons.forEach(function(b) { b.classList.remove('yin'); });
@@ -209,6 +261,23 @@ async function submitReading() {
   if (!selectedBaseId) { alert('请先选择本卦'); return; }
   var question = document.getElementById('question').value.trim();
   if (!question) { alert('请填写所问之事'); return; }
+
+  // 免费解卦次数检查
+  var usage = getUsage();
+  if (usage >= 30) {
+    var resultCard = document.getElementById('resultCard');
+    var resultBody = document.getElementById('resultBody');
+    resultCard.classList.add('visible');
+    resultBody.innerHTML = '<div style="text-align:center;padding:24px 0;">'
+      + '<p style="font-size:1.2rem;margin-bottom:12px;">☯️</p>'
+      + '<p>免费解卦已满 30 次，感谢你的使用。</p>'
+      + '<p style="margin-top:10px;">如需继续解卦，请关注公众号：<strong>解忧徐会长</strong></p>'
+      + '<img src="qrcode.jpg" alt="解忧徐会长公众号" style="width:120px;margin-top:14px;border-radius:8px;">'
+      + '</div>';
+    return;
+  }
+  incrementUsage();
+
   var baseGua = HEXAGRAMS.find(function(g) { return g.id === selectedBaseId; });
   var resultCard = document.getElementById('resultCard');
   var resultBody = document.getElementById('resultBody');
@@ -234,9 +303,9 @@ async function submitReading() {
   }
 
   var systemPrompt = '你是解忧徐会长，一位创立"三维义理解卦心法"解卦的易经研习者。你不是AI算命先生，而是一个研读义理辅助决策的朋友。\n\n'
-    + '## 核心框架：三维看世界\n'
+    + '## 核心框架：三维看世界和人生\n'
     + '任何一件事，从三个维度去看：\n'
-    + '- 格局：事情处在什么结构里（本卦的卦象格局）？上下卦的八卦物象对应什么现实隐喻？\n'
+    + '- 格局：事情处在什么结构里（本卦的卦象格局）？上下卦的卦象对应什么现实隐喻？\n'
     + '- 时机：事情处在什么时间点上（动爻在六爻中的位置）？卦气从本卦到变卦是好转还是恶化？动爻是否得位、得中、得应？是否处在互卦中？互卦有何影响？\n'
     + '- 人心：问卦人的心态和位置（爻辞中的"志""位""应变"）？他现在最需要看清什么？最需要如何调整心态和应对？\n\n'
     + '## 指导思想\n'
@@ -253,6 +322,8 @@ async function submitReading() {
     + '- 卦象说凶就说凶，但说完凶要告诉人怎么避开\n'
     + '- 结语要有力收束，一句短的话收尾\n'
     + '- 不做冗长铺垫，直接说卦、说爻、说人\n\n'
+    + '## 格式提示\n'
+    + '你可以在回复中使用 **小标题** 加粗分段标题（如 **格局** **时机** **人心** **三步实操**），用 __关键判断__ 给重要结论加下划线。这会让解读层次更清晰，但不要滥用——一段话最多一两处加粗或下划线。\n\n'
     + '## 边界\n'
     + '- 不给绝对预测，"卦象显示"不是"你一定会"\n'
     + '- 不替人做决定，卦是导航，方向盘在问卦人手里\n'
@@ -275,7 +346,7 @@ async function submitReading() {
     systemPrompt += '\n\n此卦无动爻，为静卦，卦象本身即是最重要的信息。';
   }
 
-  systemPrompt += '\n\n请根据以上信息，用徐会长的三维心法为问卦人解读此卦。';
+  systemPrompt += '\n\n请根据以上信息，用三维义理心法为问卦人解读此卦。';
 
   try {
     var apiKey = settings.apiKey;
@@ -306,13 +377,31 @@ async function submitReading() {
     var data = await response.json();
     var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
     if (!content) content = '（模型未返回内容）';
-    resultBody.innerHTML = content + '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:24px;">公众号：解忧徐会长 公益制作</p>';
+
+    // 排版格式化：** 加粗标题、__ 下划线重点、双换行切段落
+    var formatted = formatResultText(content);
+
+    // 储存复制数据
+    lastCopyData = {
+      base: baseGua,
+      derived: derivedGua,
+      yao: selectedYao,
+      question: question,
+      answer: content
+    };
+
+    resultBody.innerHTML = formatted
+      + '<div class="result-footer">'
+      +   '<p style="text-align:center;color:var(--text-light);font-size:0.82rem;margin-top:20px;">公众号：解忧徐会长 公益设计</p>'
+      +   '<button class="btn-copy" onclick="copyAll()" title="复制全部内容">📋 一键复制</button>'
+      + '</div>';
   } catch (err) {
     resultBody.innerHTML = '<p class="error-msg">解卦出错：' + err.message + '</p>'
       + '<p class="tooltip">请稍后重试，如有问题请联系公众号：解忧徐会长。</p>';
   } finally {
     submitBtn.disabled = false;
-    submitBtn.textContent = '🔮 开始解卦';
+    submitBtn.textContent = '✍ 开始解卦';
+    updateUsageHint();
   }
 }
 
@@ -332,5 +421,132 @@ function toggleTheme() {
 document.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.key === 'Enter') submitReading();
 });
+
+function copyAll() {
+  if (!lastCopyData) return;
+  var d = lastCopyData;
+
+  // ---- 纯文本版 ----
+  var plain = [];
+  plain.push('伏羲三维心法解读');
+  plain.push('');
+  plain.push('【所问事由】');
+  plain.push(d.question);
+  plain.push('');
+  plain.push('【本卦】');
+  plain.push(d.base.name + ' ' + d.base.upperTri + d.base.lowerTri);
+  plain.push('卦辞：' + d.base.judgment);
+  plain.push('上卦：' + d.base.upper + '（' + d.base.upperTri + '）  下卦：' + d.base.lower + '（' + d.base.lowerTri + '）');
+
+  if (d.yao.size > 0) {
+    var yaoNames = ['初','二','三','四','五','上'];
+    plain.push('');
+    plain.push('【动爻】');
+    d.yao.forEach(function(n) {
+      plain.push(yaoNames[n-1] + '爻：' + d.base.lines[n-1]);
+    });
+    if (d.derived) {
+      plain.push('');
+      plain.push('【之卦】');
+      plain.push(d.derived.name + ' ' + d.derived.upperTri + d.derived.lowerTri);
+      plain.push('卦辞：' + d.derived.judgment);
+    }
+  }
+
+  plain.push('');
+  plain.push('【解读】');
+  plain.push(d.answer);
+  plain.push('');
+  plain.push('—— 伏羲三维义理解卦心法 · 公众号：解忧徐会长');
+  var plainText = plain.join('\n');
+
+  // ---- 富文本版 ----
+  var html = [];
+  html.push('<div style="font-family:serif;max-width:600px;">');
+  html.push('<h2 style="text-align:center;color:#8b4513;margin-bottom:20px;">伏羲三维心法解读</h2>');
+
+  html.push('<h3 style="color:#8b4513;">所问事由</h3>');
+  html.push('<p>' + esc(d.question) + '</p>');
+
+  html.push('<hr style="border:none;border-top:1px solid #d4c5a9;">');
+  html.push('<h3 style="color:#8b4513;">本卦</h3>');
+  html.push('<p><strong>' + d.base.name + ' ' + d.base.upperTri + d.base.lowerTri + '</strong></p>');
+  html.push('<p>卦辞：' + esc(d.base.judgment) + '</p>');
+  html.push('<p>上卦' + d.base.upperTri + '为' + d.base.upper + '，下卦' + d.base.lowerTri + '为' + d.base.lower + '</p>');
+
+  if (d.yao.size > 0) {
+    var yaoNames = ['初','二','三','四','五','上'];
+    html.push('<hr style="border:none;border-top:1px solid #d4c5a9;">');
+    html.push('<h3 style="color:#8b4513;">动爻</h3>');
+    d.yao.forEach(function(n) {
+      html.push('<p><strong>' + yaoNames[n-1] + '爻：</strong>' + esc(d.base.lines[n-1]) + '</p>');
+    });
+    if (d.derived) {
+      html.push('<hr style="border:none;border-top:1px solid #d4c5a9;">');
+      html.push('<h3 style="color:#8b4513;">之卦</h3>');
+      html.push('<p><strong>' + d.derived.name + ' ' + d.derived.upperTri + d.derived.lowerTri + '</strong></p>');
+      html.push('<p>卦辞：' + esc(d.derived.judgment) + '</p>');
+    }
+  }
+
+  html.push('<hr style="border:none;border-top:1px solid #d4c5a9;">');
+  html.push('<h3 style="color:#8b4513;">解读</h3>');
+  // 还原富文本格式
+  var answerHtml = esc(d.answer);
+  answerHtml = answerHtml.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  answerHtml = answerHtml.replace(/__([^_\n]+)__/g, '<u>$1</u>');
+  answerHtml = answerHtml.replace(/\n\n/g, '</p><p>');
+  answerHtml = answerHtml.replace(/\n/g, '<br>');
+  html.push('<p>' + answerHtml + '</p>');
+
+  html.push('<hr style="border:none;border-top:1px solid #d4c5a9;">');
+  html.push('<p style="text-align:center;color:#8b4513;font-size:0.85rem;">—— 伏羲三维义理解卦心法 · 公众号：解忧徐会长</p>');
+  html.push('</div>');
+  var htmlText = html.join('\n');
+
+  // ---- 写入剪贴板 ----
+  function done() {
+    var btn = document.querySelector('.btn-copy');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = '✅ 已复制（含格式）';
+      btn.classList.add('copied');
+      setTimeout(function() {
+        btn.textContent = orig;
+        btn.classList.remove('copied');
+      }, 2000);
+    }
+  }
+
+  if (navigator.clipboard && navigator.clipboard.write && typeof ClipboardItem !== 'undefined') {
+    try {
+      var blobHtml = new Blob([htmlText], { type: 'text/html' });
+      var blobPlain = new Blob([plainText], { type: 'text/plain' });
+      navigator.clipboard.write([
+        new ClipboardItem({
+          'text/html': blobHtml,
+          'text/plain': blobPlain
+        })
+      ]).then(done).catch(function() { fallbackCopy(plainText); done(); });
+    } catch(e) { fallbackCopy(plainText); done(); }
+  } else {
+    fallbackCopy(plainText);
+    done();
+  }
+}
+
+function esc(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch(e) {}
+  document.body.removeChild(ta);
+}
 
 init();
